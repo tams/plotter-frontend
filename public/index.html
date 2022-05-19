@@ -11,23 +11,23 @@
   <body>
     <div class="header">
        <p class="title">
-          Setup page for the plotter at techinc
+          Setup page for the plotter
        </p>
     </div>
     <div class="content">
        <h2>Load your SVG file here</h2>
        <div class="svg-loader container">
-         <button class="svg-load-button" id="loadSVG">click me!</button>
-         <label for="loadSVG" class="svg-load-label">[no image loaded]</p>
+         <input type="file" class="svg-load-button" name="myFile">
+         <label for="loadSVG" class="svg-load-label"></label>
        </div>
        <h3>Add options</h3>
        <div class="options container">
          <div class="option">
-           <input type="checkbox" id="boundingBox"></input>
+           <input type="checkbox" id="box"></input>
            <label for="boundingBox" class="checkbox-label">bounding box</label>
          </div>
          <div class="option">
-           <input type="checkbox" id="dryRun"></input>
+           <input type="checkbox" id="dry-run"></input>
            <label for="dryRun" class="checkbox-label">dry run</label>
          </div>
          <div class="option">
@@ -38,12 +38,12 @@
     </div>
     <div class="footer">
        <div class="buttons container">
-         <button>convert</button>
+         <button onclick="convertSVG()">convert</button>
          <div class="info">
            <div class="title">INFO:</div>
            <div class="" id="feedback">text feedback here..</div>
          </div>
-         <button>upload</button>
+         <button onclick="upload()">upload</button>
        </div>
     </div>
     <script src="home.js"></script>
