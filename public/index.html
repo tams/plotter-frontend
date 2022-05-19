@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>My Website</title>
+    <link rel="stylesheet" href="./home.css">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+  </head>
+  <body>
+    <div class="header">
+       <p class="title">
+          Setup page for the plotter at techinc
+       </p>
+    </div>
+    <div class="content">
+       <h2>Load your SVG file here</h2>
+       <div class="svg-loader container">
+         <button class="svg-load-button" id="loadSVG">click me!</button>
+         <label for="loadSVG" class="svg-load-label">[no image loaded]</p>
+       </div>
+       <h3>Add options</h3>
+       <div class="options container">
+         <div class="option">
+           <input type="checkbox" id="boundingBox"></input>
+           <label for="boundingBox" class="checkbox-label">bounding box</label>
+         </div>
+         <div class="option">
+           <input type="checkbox" id="dryRun"></input>
+           <label for="dryRun" class="checkbox-label">dry run</label>
+         </div>
+         <div class="option">
+           <input type="checkbox" id="hatch"></input>
+           <label for="hatch" class="checkbox-label">hatch</label>
+         </div>
+       </div>
+    </div>
+    <div class="footer">
+       <div class="buttons container">
+         <button>convert</button>
+         <div class="info">
+           <div class="title">INFO:</div>
+           <div class="" id="feedback">text feedback here..</div>
+         </div>
+         <button>upload</button>
+       </div>
+    </div>
+    <script src="home.js"></script>
+  </body>
+</html>
+
