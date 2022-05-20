@@ -14,6 +14,11 @@ body {
   background-color: blue;
 }
 
+h3 {
+  height: auto;
+  margin-bottom: 0;
+}
+
 .header {
   flex: 1;
   display: flex;
@@ -45,27 +50,39 @@ body {
   background-color: lightred;
 }
 
-.svg-loader {
-  flex: 1;
+.content .svg-loader {
   display: flex;
   flex-direction: row;
+  height: auto;
+  width: 70%;
+  align-items: center;
   background-color: yellow;
 }
 
-.options {
+.content .previewBox {
+  display: flex;
+  width: 80%;
+  flex: 1;
+  background-color: orange;
+}
+
+.content .options {
   flex: 1;
   width: 100%;
   display: flex;
   flex-direction: column;
   background-color: white;
-  color: black;  
+  color: black;
+  max-height: 25vh;  
 }
 
 .options .option {
   display: flex;
   flex: 1;
-  
   flex-direction: row;
+  margin: 3px;
+  width: 160px;
+  background-color: pink;
 }
 
 .footer .buttons {
@@ -91,4 +108,21 @@ button {
   color: white;
   height: 100%;
   text-align: center;
+}
+
+label {
+  align-self: center;
+  margin-left: 3%;
+}
+
+.feedback {
+  margin: 3%;
+}
+
+.previewBox {
+  height: 100%;
+  max-height: 100%;
+}
+
+#previewIMG {
 }
