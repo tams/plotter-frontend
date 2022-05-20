@@ -11,7 +11,7 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: blue;
+  background-color: lightblue;
 }
 
 h3 {
@@ -22,24 +22,36 @@ h3 {
 .header {
   flex: 1;
   display: flex;
+  flex-direction: column;
   font-size: 28px;
   width: 100%;
   max-width: 800px;
   align-items: center;
   justify-content: center;
-  background-color: lightblue;
+}
 
+.header .title {
+  flex: 1;
+  height: auto;
+  font-weight: bold;
+  font-size: 36px;
+  margin: 5% 0 0 0;
+}
+
+.subtitle {
+  flex: 1;
+  font-size: 28px;
+  margin: 0 0 0 0;
 }
 
 .content {
-  flex: 5;
+  flex: 6;
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 800px;
   align-items: center;
   justify-content: center;
-  background-color: lightgreen;
 }
 
 .footer {
@@ -47,7 +59,6 @@ h3 {
   width: 100%;
   display: flex;
   max-width: 800px;
-  background-color: lightred;
 }
 
 .content .svg-loader {
@@ -56,14 +67,13 @@ h3 {
   height: auto;
   width: 70%;
   align-items: center;
-  background-color: yellow;
 }
 
 .content .previewBox {
   display: flex;
   width: 80%;
-  flex: 1;
-  background-color: orange;
+  flex: 4;
+  background-color: white;
 }
 
 .content .options {
@@ -71,7 +81,6 @@ h3 {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: white;
   color: black;
   max-height: 25vh;  
 }
@@ -82,7 +91,6 @@ h3 {
   flex-direction: row;
   margin: 3px;
   width: 160px;
-  background-color: pink;
 }
 
 .footer .buttons {
@@ -105,7 +113,7 @@ button {
 }
 
 .info {
-  color: white;
+  color: blue;
   height: 100%;
   text-align: center;
 }
@@ -117,9 +125,4 @@ label {
 
 .feedback {
   margin: 3%;
-}
-
-.previewBox {
-  height: 100%;
-  max-height: 100%;
 }
