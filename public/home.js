@@ -48,10 +48,8 @@ const updateInfo = (text) => {
 * upon successful operation unlocks the convert button
 */
 const uploadSVG = () => {
-  console.log("uploading")
   document.querySelector("#uploadBtn").disabled = true;
   var input = document.querySelector("input[type=file]")
-  console.log(input.files[0])
   const fd = new FormData()
   fd.append("file", input.files[0])
   fetch('/upload', {
@@ -86,19 +84,15 @@ const disableButtons = () => {
 * initialize the infobox reference
 */
 window.addEventListener('load', () => {
-  console.log("setup taking place")
   disableButtons()
   unloadFiles()
   const checkboxes = document.querySelectorAll("input[type=checkbox]")
-  console.log(checkboxes)
-  checkboxes.forEach(
-	(input) => {
-                isChecked = input.checked ? 1 : 0;
-                options.append(input.id, isChecked);
-		input.addEventListener('click',
-			(item) => {
-				options.set(item.target.id, 1 - options.get(item.target.id));
-                	})
+  checkboxes.forEach( (input) => {
+      isChecked = input.checked ? 1 : 0;
+      options.append(input.id, isChecked);
+      input.addEventListener('click', (item) => {
+        options.set(item.target.id, 1 - options.get(item.target.id));
+      })
   })
   infobox = document.querySelector("#feedback")
 });
