@@ -18,6 +18,11 @@ app.use(fileUpload({
 }))
 app.use(morgan("dev"))
 
+// cache bypass for updated preview
+app.get('/preview/:code', (req, res) => {
+  res.redirect('/preview');
+})
+
 app.get('/preview', (req, res) => {
   res.setHeader('Content-Type', 'image/svg+xml');
   res.sendFile(__dirname + '/vis.svg');
@@ -25,17 +30,19 @@ app.get('/preview', (req, res) => {
 
 app.get('/run', (req, res) => {
   exec("cat ./files/out/image.wild > /dev/ttyS0", (error, stdout, stderr) => {
-      res.json({ stdo: stdout, stde: stderr })
+      res.json({ stdo: stdout, stde: stderr });
   });
 });
 
 app.post("/convert", (req, res) => {
   let _cmd = "./wild_driver"
-  if(req.body.box === '1'){ _cmd = _cmd.concat(" ", "--box") }
+  let boxed = false;
+  if(req.body.box === '1'){ _cmd = _cmd.concat(" ", "--box"); boxed=true; }
   if(req.body.hatch === '1'){ _cmd = _cmd.concat(" ", "--hatch") }
   if(req.body.dryrun === '1'){  _cmd = _cmd.concat(" ", "--dry_run") }
   _cmd = _cmd.concat(" ", "-i ./files/in/image.svg -o ./files/out/image.wild");
   exec(_cmd, (error, stdout, stderr) => {
+    stdout = boxed ? "boxed version -> " + stdout : "final version -> " + stdout;
     return res.json({stdo: stdout, stde: stderr})
   })
 })
