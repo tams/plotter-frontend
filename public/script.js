@@ -16,19 +16,22 @@ const unloadFiles = () => {
   document.querySelector("input[type=file]").value=""
 }
 
-/* load the vis.svg file AFTER new image is converted */
+/*
+* load the vis.svg file AFTER new image is converted
+* the random number is needed to trick the browser into reloading the preview image
+*/
 const showPreview = () => {
   document.querySelector("#previewIMG").style = "display:block;width:inherit"
-  document.querySelector("#previewIMG").src = "http://localhost:8080/preview"
+  document.querySelector("#previewIMG").src = window.location.href + "preview/" + Math.floor(Math.random() * 1000).toString()
 }
 
 /* action triggered upon clicking the "convert" button */
 const convertSVG = () => {
   // global "options"
-  fetch('/convert',{ method: 'POST', body: options})
+  fetch('/convert',{ method: 'POST', body: options })
   .then((res)=> { return res.json() })
   .then((out)=> {
-    if(out.stde.length > 0){ console.error("errors occurred in remote command")}
+    if(out.stde.length > 0){ updateInfo("errors occurred in remote command")}
     if(out.stdo.length > 0){
       let arr = out.stdo.split("\n")
       updateInfo(arr[1]) // positional selection of stdout lines :(
@@ -69,6 +72,10 @@ const uploadSVG = () => {
           updateInfo("unknown error code")
      }
   });
+}
+
+const uploadWild = () => {
+  fetch('/run').then((res) => { res.json() }).then((res) => { updateInfo("printing completed") })
 }
 
 // for some reason I have to do it with js despite attribute beign set in the html element
