@@ -16,7 +16,6 @@ web interface to load images, configure and run the Wild TA-10 plotting machine 
 As the page loads, both buttons at the bottom will be disabled, until the user **loads** an SVG image with the file uploader at the top. The **convert** button will be enabled first and when clicked, it will collect the ticked options to build the command that will convert the SVG file into _.wild_ format. The server will execute the command and return the image measures, which will be displayed in the INFO section at the bottom. If everything went well, the **upload** button will enable the user to issue the final command, piping the converted file through the right socket.
 
 ## TODO
-* ! fix preview not updating on new conversion !
 * add configuration file for custom ports/paths
 * add explanations for optional parameters
 * add further parameters for the "convert" command (e.g. scaling)
