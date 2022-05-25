@@ -4,7 +4,15 @@ const app = express()
 const { exec } = require("child_process");
 const fileUpload = require("express-fileupload");
 const path = require("path");
-const morgan = require("morgan")
+const morgan = require("morgan");
+const { Z_NO_COMPRESSION } = require('zlib');
+const Validator = require('validatorjs');
+
+const validator = (body, rules, customMessages, callback) => {
+  const validation = new Validator(body, rules, customMessages);
+  validation.passes(() => callback(null, true));
+  validation.fails(() => callback(validation.errors, false));
+};
 
 app.use(express.static('public'));
 app.use(bp.json())
@@ -18,33 +26,76 @@ app.use(fileUpload({
 }))
 app.use(morgan("dev"))
 
-// cache bypass for updated preview
+
+// cache bypass for updated preview/original
+app.get('/original/:code', (req, res) => {
+  res.redirect('/original');
+})
+
 app.get('/preview/:code', (req, res) => {
   res.redirect('/preview');
 })
 
-app.get('/preview', (req, res) => {
+
+app.get('/original', (req, res) => {
   res.setHeader('Content-Type', 'image/svg+xml');
   res.sendFile(__dirname + '/vis.svg');
 })
 
-app.get('/run', (req, res) => {
-  exec("cat ./files/out/image.wild > /dev/ttyS0", (error, stdout, stderr) => {
+app.get('/preview', (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.sendFile(__dirname + '/files/in/image.svg');
+})
+
+
+app.get('/run/:target', (req, res) => {
+  let tgt = '';
+  if(req.params.target === 'box'){ tgt = 'box.wild' }
+  if(req.params.target === 'dry_run'){ tgt = 'dry_run.wild' }
+  if(req.params.target === 'draw'){ tgt = 'draw.wild' }
+  if(tgt === ''){ return res.status(404).send("Invalid endpoint") }
+
+  exec("cat ./files/out/" + tgt + " > /dev/ttyS0", (error, stdout, stderr) => {
       res.json({ stdo: stdout, stde: stderr });
   });
 });
 
 app.post("/convert", (req, res) => {
-  let _cmd = "./wild_driver"
-  let boxed = false;
-  if(req.body.box === '1'){ _cmd = _cmd.concat(" ", "--box"); boxed=true; }
-  if(req.body.hatch === '1'){ _cmd = _cmd.concat(" ", "--hatch") }
-  if(req.body.dryrun === '1'){  _cmd = _cmd.concat(" ", "--dry_run") }
-  _cmd = _cmd.concat(" ", "-i ./files/in/image.svg -o ./files/out/image.wild");
-  exec(_cmd, (error, stdout, stderr) => {
-    stdout = boxed ? "boxed version -> " + stdout : "final version -> " + stdout;
-    return res.json({stdo: stdout, stde: stderr})
-  })
+  validator(
+    req.body,
+    {
+      // validation goes there
+      "hatch": "boolean|required"
+    },
+    {},
+    (err, status) => {
+      if (!status) {
+        res.status(412).send(err);
+      } else {
+        let cmd = "./wild_driver";
+        cmd += " --input " + __dirname + "/files/in/image.svg"
+
+        // all the config options go there
+        if (req.body.hatch) {cmd += " --hatch"}
+
+        cmd += " --output " + __dirname + "/files/out/"
+
+        exec(cmd + "box.wild --box", (error, stdout, stderr) => {
+          if (error) { return res.json({"success": false, "step": 1, "error": error}) }
+
+          exec(cmd + "dry_run.wild --dry_run", (error, stdout, stderr) => {
+            if (error) { return res.json({"success": false, "step": 2, "error": error}) }
+
+            exec(cmd + "draw.wild", (error, stdout, stderr) => {
+              if (error) { return res.json({"success": false, "step": 3, "error": error}) }
+
+              return res.json({"success": true, "stdout": stdout})
+            });
+          });
+        });
+      }
+    }
+  )
 })
 
 app.post("/upload", (req, res) => {
