@@ -1,106 +1,145 @@
-let options = new FormData()
-let infobox = null
-
-/* free all ticked boxes on page load */
-const uncheckInputs = () => {
-  var inputs = document.getElementsByTagName('input');
-    for (var i=0; i<inputs.length; i++)  {
-      if (inputs[i].type == 'checkbox')   {
-        inputs[i].checked = false;
-      }
-    }
-}
-
-/* clear file uploader on page re-load */
-const unloadFiles = () => {
-  document.querySelector("input[type=file]").value=""
-}
-
-/*
-* load the vis.svg file AFTER new image is converted
-* the random number is needed to trick the browser into reloading the preview image
-*/
-const showPreview = () => {
-  document.querySelector("#previewIMG").style = "display:block;width:inherit"
-  document.querySelector("#previewIMG").src = window.location.href + "preview/" + Math.floor(Math.random() * 1000).toString()
-}
-
-/* action triggered upon clicking the "convert" button */
-const convertSVG = () => {
-  // global "options"
-  fetch('/convert',{ method: 'POST', body: options })
-  .then((res)=> { return res.json() })
-  .then((out)=> {
-    if(out.stde.length > 0){ updateInfo("errors occurred in remote command")}
-    if(out.stdo.length > 0){
-      let arr = out.stdo.split("\n")
-      updateInfo(arr[1]) // positional selection of stdout lines :(
-      showPreview()
-      document.querySelector("#uploadBtn").disabled = false;
-    }
-  })
+const defaultValues = {
+  "input-scale": 1,
+  "input-hatch": false,
+  "input-hatch-density": 2,
 }
 
 const updateInfo = (text) => {
-  infobox.innerHTML = text
+  document.getElementById("info").innerHTML = text
 }
 
-/*
-* triggered upon file uploader change
-* gives feedback in the INFO section
-* upon successful operation unlocks the convert button
-*/
 const uploadSVG = () => {
-  document.querySelector("#uploadBtn").disabled = true;
-  var input = document.querySelector("input[type=file]")
+  var input = document.getElementById("load-svg")
   const fd = new FormData()
   fd.append("file", input.files[0])
   fetch('/upload', {
     method: 'POST',
     body: fd
   }).then((res) => {
-     if(res.status=="422"){
-          updateInfo("the file extention is incorrect")
-     } else if (res.status=="500"){
-          updateInfo("ouh shit you broke the server")
-     } else if (res.status=="200"){
-          updateInfo("the image was successfully uploaded")
-          document.querySelector("#convertBtn").disabled = false;
-     } else if (res.status=="400"){
-          updateInfo("no file loaded")
-     } else {
-          updateInfo("unknown error code")
-     }
+    if(res.status=="422"){
+      updateInfo("the file extention is incorrect")
+    } else if (res.status=="500"){
+      updateInfo("ouh shit you broke the server")
+    } else if (res.status=="200"){
+      let elt = document.querySelector("#load-svg+.big-button-label p:nth-child(2)");
+      elt.innerHTML = input.files[0].name
+      showOriginal();
+      document.getElementById("render").disabled = false;
+      document.getElementById("show-original").disabled = true;
+      document.getElementById("show-preview").disabled = true;
+      document.getElementById("draw-box").disabled = true;
+      document.getElementById("draw-dry-run").disabled = true;
+      document.getElementById("draw-final").disabled = true;
+    } else if (res.status=="400"){
+      updateInfo("no file loaded")
+    } else {
+      updateInfo("unknown error code " + res.status)
+    }
   });
 }
 
-const uploadWild = () => {
-  fetch('/run').then((res) => { res.json() }).then((res) => { updateInfo("printing completed") })
+const showOriginal = () => {
+  document.getElementById("preview-img").style = "display:block"
+  document.getElementById("preview-img").src = "/original/" + Math.floor(Math.random() * 1000).toString()
 }
 
-// for some reason I have to do it with js despite attribute beign set in the html element
-const disableButtons = () => {
-  document.querySelector("#convertBtn").disabled = true;
-  document.querySelector("#uploadBtn").disabled = true;
+const showPreview = () => {
+  document.getElementById("preview-img").style = "display:block"
+  document.getElementById("preview-img").src = "/preview/" + Math.floor(Math.random() * 1000).toString()
 }
 
-/*
-* our "main" function
-* forces inputs to blank
-* allows checkboxes to update global state
-* initialize the infobox reference
-*/
-window.addEventListener('load', () => {
-  disableButtons()
-  unloadFiles()
-  const checkboxes = document.querySelectorAll("input[type=checkbox]")
-  checkboxes.forEach( (input) => {
-      isChecked = input.checked ? 1 : 0;
-      options.append(input.id, isChecked);
-      input.addEventListener('click', (item) => {
-        options.set(item.target.id, 1 - options.get(item.target.id));
-      })
+const getInput = (field) => {
+  if (field.type == "checkbox") {
+    return Boolean(field.checked);
+  } else {
+    return field.value;
+  }
+}
+
+const setInput = (field, value) => {
+  if (field.type == "checkbox") {
+    field.checked = value;
+  } else {
+    field.value = value;
+  }
+}
+
+const resetField = (name) => {
+  let field = document.getElementById(name)
+  setInput(field, defaultValues[name]);
+  changeRenderOptions();
+}
+
+const resetRenderOptions = () => {
+  for (let input in defaultValues) {
+    let field = document.getElementById(input)
+    setInput(field, defaultValues[input]);
+  }
+  changeRenderOptions();
+}
+
+const changeRenderOptions = () => {
+  for (let input in defaultValues) {
+    let field = document.getElementById(input)
+    let resetButton = field.parentElement.parentElement.querySelector(":scope td:nth-child(3) button");
+    resetButton.disabled = Boolean(getInput(field) == defaultValues[input]);
+  }
+}
+
+const renderSVG = () => {
+  let options = new FormData(document.getElementById("render-options"))
+  fetch('/render_svg',{ method: 'POST', body: options })
+  .then((res)=> {
+    if (res.status != 200) {
+      updateInfo("server error: " + res.status);
+      return;
+    }
+    return res.json()
+  }).then((out) => {
+    if (out === undefined) { return; }
+    if(!out.success){
+      updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error + ")")
+    } else {
+      let arr = out.stdout.split("\n")
+      updateInfo(arr[1]) // positional selection of stdout lines :( TODO fix backend and provide better info
+      showPreview();
+      document.getElementById("show-original").disabled = false;
+      document.getElementById("show-preview").disabled = false;
+      document.getElementById("draw-box").disabled = false;
+      document.getElementById("draw-dry-run").disabled = false;
+      document.getElementById("draw-final").disabled = false;
+    }
   })
-  infobox = document.querySelector("#feedback")
-});
+}
 
+const draw = (what) => {
+  var inputs = document.getElementsByTagName('input');
+
+  for (var i=0; i<inputs.length; i++) {
+    inputs[i].disabled = true;
+  }
+  fetch('/run/' + what).then((res) => { return res.json() }).then((res) => {
+    if (!res.error) {
+      updateInfo("printing successful");
+    } else {
+      updateInfo("printing failed!<br/>" + res.stdout + "<br/>" + res.stderr)
+    }
+    for (var i=0; i<inputs.length; i++) {
+      inputs[i].disabled = false;
+    }
+  })
+}
+
+window.addEventListener('load', () => {
+  // unload files
+  document.getElementById("load-svg").value="";
+  // reset form
+  resetRenderOptions();
+  // disable buttons
+  document.getElementById("render").disabled = true;
+  document.getElementById("show-original").disabled = true;
+  document.getElementById("show-preview").disabled = true;
+  document.getElementById("draw-box").disabled = true;
+  document.getElementById("draw-dry-run").disabled = true;
+  document.getElementById("draw-final").disabled = true;
+});

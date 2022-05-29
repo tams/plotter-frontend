@@ -4,49 +4,82 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>WildWildWeb</title>
+    <title>Wild TA-10 web interface</title>
     <link rel="stylesheet" href="./style.css">
     <link rel="icon" href="./favicon.ico" type="image/x-icon">
   </head>
   <body>
-    <div class="header">
-       <p class="title">Wild TA-10</p>
-       <p class="subtitle">setup page</p>
+    <div id="preview-buttons" class="button-container">
+      <input type="file" id="load-svg" class="big-button" accept="image/xml+svg" onchange="uploadSVG()">
+      <label for="load-svg" class="big-button-label">
+        <p>Choose File</p>
+        <p>&lt;none chosen&gt;</p>
+      </label>
+
+      <input type="button" disabled id="show-original" class="big-button" onclick="showOriginal()">
+      <label for="show-original" class="big-button-label">
+        <p>Original</p>
+      </label>
+
+      <input type="button" disabled id="show-preview" class="big-button" onclick="showPreview()">
+      <label for="show-preview" class="big-button-label">
+        <p>Preview</p>
+      </label>
     </div>
-    <div class="content">
-       <h2>Load your SVG file here</h2>
-       <div class="svg-loader">
-         <input type="file" class="svg-load-button" name="myFile" accept="image/xml+svg" onchange="uploadSVG()">
-         <label for="loadSVG" class="svg-load-label"></label>
-       </div>
-       <div class="previewBox container" id="previewBox">
-         <img id="previewIMG" src="" alt="preview svg" style="display:none;width:inherit"/>
-       </div>
-       <h3>Add options</h3>
-       <div class="options container">
-         <div class="option">
-           <input type="checkbox" id="box"></input>
-           <label for="boundingBox" class="checkbox-label">bounding box</label>
-         </div>
-         <div class="option">
-           <input type="checkbox" id="dryrun"></input>
-           <label for="dryRun" class="checkbox-label">dry run</label>
-         </div>
-         <div class="option">
-           <input type="checkbox" id="hatch"></input>
-           <label for="hatch" class="checkbox-label">hatch</label>
-         </div>
-       </div>
+    <div id="preview">
+      <img id="preview-img" src="" alt="preview image" style="display: none;"/>
     </div>
-    <div class="footer">
-       <div class="buttons container">
-         <button id="convertBtn" onclick="convertSVG()" disabled>convert</button>
-         <div class="info">
-           <div class="title">INFO</div>
-           <div class="feedback" id="feedback">operations feedback here..</div>
-         </div>
-         <button id="uploadBtn" onclick="uploadWild()" disabled>upload</button>
-       </div>
+    <div id="info"></div>
+    <div id="settings">
+      <form id="render-options">
+        <table>
+          <tr>
+            <td><label for="input-scale">Scale</label></td>
+            <td><input type="number" step="0.01" min="0.1" id="input-scale" name="scale" class="input-field" onchange="changeRenderOptions()"></td>
+            <td><button type="button" class="reset-button" disabled onclick="resetField('input-scale')">&#10006;</button></td>
+            <td><span class="input-description">Scale of the plot</span></td>
+          </tr>
+          <tr>
+            <td><label for="input-hatch">Hatch</label></td>
+            <td><input type="checkbox" id="input-hatch" name="hatch" class="input-checkbox" onchange="changeRenderOptions()"></td>
+            <td><button type="button" class="reset-button" disabled onclick="resetField('input-hatch')">&#10006;</button></td>
+            <td><span class="input-description">Turn on hatching</span></td>
+          </tr>
+          <tr>
+            <td><label for="input-hatch-density">Hatch density</label></td>
+            <td><input type="number" step="0.1" min="0.1" id="input-hatch-density" name="hatch_density" class="input-field" onchange="changeRenderOptions()"></td>
+            <td><button type="button" class="reset-button" disabled onclick="resetField('input-hatch-density')">&#10006;</button></td>
+            <td><span class="input-description">Spacing between hatch lines</span></td>
+          </tr>
+        </table>
+      </form>
+    </div>
+    <div id="settings-buttons" class="button-container">
+      <input type="button" form="render-options" id="reset-all" class="big-button" onclick="resetRenderOptions()">
+      <label for="reset-all" class="big-button-label">
+        <p>Reset all</p>
+      </label>
+
+      <input type="button" form="render-options" disabled id="render" class="big-button" onclick="renderSVG()">
+      <label for="render" class="big-button-label">
+        <p>Render</p>
+      </label>
+    </div>
+    <div id="draw-buttons" class="button-container">
+      <input type="button" disabled id="draw-box" class="big-button" onclick="draw('box')">
+      <label for="draw-box" class="big-button-label">
+        <p>Box</p>
+      </label>
+
+      <input type="button" disabled id="draw-dry-run" class="big-button" onclick="draw('dry_run')">
+      <label for="draw-dry-run" class="big-button-label">
+        <p>Dry Run</p>
+      </label>
+
+      <input type="button" disabled id="draw-final" class="big-button" onclick="draw('draw')">
+      <label for="draw-final" class="big-button-label">
+        <p>Draw</p>
+      </label>
     </div>
     <script src="script.js"></script>
   </body>

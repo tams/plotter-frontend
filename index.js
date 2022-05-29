@@ -19,7 +19,7 @@ app.use(bp.json())
 app.use(express.urlencoded({extended: true}));
 app.use(fileUpload({
     limits: {
-        fileSize: 1024 * 1024 // 1 MB
+        fileSize: 4 *1024 * 1024 // 4 MB
     },
     abortOnLimit: true,
     createParentPath: true
@@ -36,66 +36,14 @@ app.get('/preview/:code', (req, res) => {
   res.redirect('/preview');
 })
 
-
 app.get('/original', (req, res) => {
-  res.setHeader('Content-Type', 'image/svg+xml');
-  res.sendFile(__dirname + '/vis.svg');
-})
-
-app.get('/preview', (req, res) => {
   res.setHeader('Content-Type', 'image/svg+xml');
   res.sendFile(__dirname + '/files/in/image.svg');
 })
 
-
-app.get('/run/:target', (req, res) => {
-  let tgt = '';
-  if(req.params.target === 'box'){ tgt = 'box.wild' }
-  if(req.params.target === 'dry_run'){ tgt = 'dry_run.wild' }
-  if(req.params.target === 'draw'){ tgt = 'draw.wild' }
-  if(tgt === ''){ return res.status(404).send("Invalid endpoint") }
-
-  exec("cat ./files/out/" + tgt + " > /dev/ttyS0", (error, stdout, stderr) => {
-      res.json({ stdo: stdout, stde: stderr });
-  });
-});
-
-app.post("/convert", (req, res) => {
-  validator(
-    req.body,
-    {
-      // validation goes there
-      "hatch": "boolean|required"
-    },
-    {},
-    (err, status) => {
-      if (!status) {
-        res.status(412).send(err);
-      } else {
-        let cmd = "./wild_driver";
-        cmd += " --input " + __dirname + "/files/in/image.svg"
-
-        // all the config options go there
-        if (req.body.hatch) {cmd += " --hatch"}
-
-        cmd += " --output " + __dirname + "/files/out/"
-
-        exec(cmd + "box.wild --box", (error, stdout, stderr) => {
-          if (error) { return res.json({"success": false, "step": 1, "error": error}) }
-
-          exec(cmd + "dry_run.wild --dry_run", (error, stdout, stderr) => {
-            if (error) { return res.json({"success": false, "step": 2, "error": error}) }
-
-            exec(cmd + "draw.wild", (error, stdout, stderr) => {
-              if (error) { return res.json({"success": false, "step": 3, "error": error}) }
-
-              return res.json({"success": true, "stdout": stdout})
-            });
-          });
-        });
-      }
-    }
-  )
+app.get('/preview', (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.sendFile(__dirname + '/vis.svg');
 })
 
 app.post("/upload", (req, res) => {
@@ -117,6 +65,80 @@ app.post("/upload", (req, res) => {
     return res.send({ status: "success", path: filepath });
   });
 });
+
+app.post("/render_svg", (req, res) => {
+  let json = req.body
+  validator(
+    json,
+    {
+      // validation goes there
+      "scale": "required|numeric|min:0.1",
+      "hatch": "in:on",
+      "hatch_density": "required|numeric|min:0.1",
+    },
+    {},
+    (err, status) => {
+      if (!status) {
+        res.status(412).send(err);
+      } else {
+        let cmd = "./wild_driver_bin";
+        cmd += " --input " + __dirname + "/files/in/image.svg"
+
+        // all the config options go there
+        cmd += " --scale " + parseFloat(json.scale)
+
+        if (json.hatch) {
+          cmd += " --hatch"
+          cmd += " --hatch_density " + parseFloat(json.hatch_density)
+        }
+
+        cmd += " --output " + __dirname + "/files/out/"
+
+        exec(cmd + "box.wild --box", (error, stdout, stderr) => {
+          console.log("====== box ======\n")
+          console.log(stdout)
+          console.log(stderr)
+          if (error) { return res.json({"success": false, "step": 1, "error": error}) }
+
+          exec(cmd + "dry_run.wild --dry_run", (error, stdout, stderr) => {
+              console.log("====== dry_run ======\n")
+              console.log(stdout)
+              console.log(stderr)
+              if (error) { return res.json({"success": false, "step": 2, "error": error}) }
+
+            exec(cmd + "draw.wild", (error, stdout, stderr) => {
+                  console.log("====== draw ======\n")
+                  console.log(stdout)
+                  console.log(stderr)
+                  if (error) { return res.json({"success": false, "step": 3, "error": error}) }
+
+              return res.json({"success": true, "stdout": stdout})
+            });
+          });
+        });
+      }
+    }
+  )
+})
+
+app.get('/run/:target', (req, res) => {
+  let tgt = '';
+  if(req.params.target === 'box'){ tgt = 'box.wild' }
+  if(req.params.target === 'dry_run'){ tgt = 'dry_run.wild' }
+  if(req.params.target === 'draw'){ tgt = 'draw.wild' }
+  if(tgt === ''){ return res.status(404).send("Invalid endpoint") }
+
+  exec(
+    "stty -F /dev/ttyS0 9600 crtscts && cat ./files/out/" + tgt + " > /dev/ttyS0",
+    (error, stdout, stderr) => {
+      console.log("====== send to plotter ======\n")
+      console.log(error)
+      console.log(stdout)
+      console.log(stderr)
+      return res.json({ "error": error ? true : false, "stdout": stdout, "stderr": stderr });
+    }
+  );
+})
 
 app.listen(8080, (err) => {
   if(err) throw err;
