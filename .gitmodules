@@ -1,0 +1,3 @@
+[submodule "wild_driver"]
+	path = wild_driver
+	url = https://github.com/quinor/wild_driver.git
