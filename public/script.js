@@ -133,6 +133,8 @@ const draw = (what) => {
   for (var i=0; i<inputs.length; i++) {
     inputs[i].disabled = true;
   }
+  updateInfo("printing in progress...");
+
   fetch('/run/' + what).then((res) => { return res.json() }).then((res) => {
     if (!res.error) {
       updateInfo("printing successful");
