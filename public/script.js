@@ -88,6 +88,16 @@ const changeRenderOptions = () => {
     let field = document.getElementById(input)
     let resetButton = field.parentElement.parentElement.querySelector(":scope td:nth-child(3) button");
     resetButton.disabled = Boolean(getInput(field) == defaultValues[input]);
+
+    if (input == "input-cut")
+    {
+      let button = document.querySelector("#draw-final+label p");
+      if (getInput(field)) {
+        button.innerHTML = "Cut!";
+      } else {
+        button.innerHTML = "Draw!";
+      }
+    }
   }
 }
 
