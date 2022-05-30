@@ -48,6 +48,12 @@
             <td><span class="input-description">Scale of the plot</span></td>
           </tr>
           <tr>
+            <td><label for="input-cut">Cut</label></td>
+            <td><input type="checkbox" id="input-cut" name="cut" class="input-checkbox" onchange="changeRenderOptions()"></td>
+            <td><button type="button" class="reset-button" disabled onclick="resetField('input-cut')">&#10006;</button></td>
+            <td><span class="input-description">Cutting mode, <span style="color: red">don't use without additional training!</span></td>
+          </tr>
+          <tr>
             <td><label for="input-hatch">Hatch</label></td>
             <td><input type="checkbox" id="input-hatch" name="hatch" class="input-checkbox" onchange="changeRenderOptions()"></td>
             <td><button type="button" class="reset-button" disabled onclick="resetField('input-hatch')">&#10006;</button></td>

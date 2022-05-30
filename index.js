@@ -73,6 +73,7 @@ app.post("/render_svg", (req, res) => {
     {
       // validation goes there
       "scale": "required|numeric|min:0.1",
+      "cut": "in:on",
       "hatch": "in:on",
       "hatch_density": "required|numeric|min:0.1",
     },
@@ -84,9 +85,11 @@ app.post("/render_svg", (req, res) => {
         let cmd = "./wild_driver_bin";
         cmd += " --input " + __dirname + "/files/in/image.svg"
 
-        // all the config options go there
         cmd += " --scale " + parseFloat(json.scale)
 
+        if (json.cut) {
+          cmd += " --cut"
+        }
         if (json.hatch) {
           cmd += " --hatch"
           cmd += " --hatch_density " + parseFloat(json.hatch_density)
