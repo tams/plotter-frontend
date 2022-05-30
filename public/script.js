@@ -112,7 +112,7 @@ const renderSVG = () => {
       updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error + ")")
     } else {
       let arr = out.stdout.split("\n")
-      updateInfo(arr[1]) // positional selection of stdout lines :( TODO fix backend and provide better info
+      updateInfo(arr[3]+"<br/>"+arr[4]) // positional selection of stdout lines :( TODO fix backend and provide better info
       showPreview();
       document.getElementById("show-original").disabled = false;
       document.getElementById("show-preview").disabled = false;
