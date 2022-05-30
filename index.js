@@ -140,7 +140,9 @@ app.get('/run/:target', (req, res) => {
   );
 })
 
-app.listen(8080, (err) => {
+let port = process.env.PORT || 8080
+
+app.listen(port, (err) => {
   if(err) throw err;
-  console.log("listening on port 8080");
+  console.log("listening on port " + port);
 })
