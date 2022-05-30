@@ -54,6 +54,7 @@ display: grid;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  padding: 2em;
 }
 
 #settings-buttons {
@@ -105,8 +106,6 @@ display: grid;
   opacity: 50%;
 }
 
-
-
 .big-button-label p {
   text-align: center;
   font-size: 130%;
@@ -124,27 +123,25 @@ display: grid;
   border: 2px dashed gray;
 }
 
-/* .option-list {
+
+#render-options table {
   all: unset;
   box-sizing: border-box;
-
-  padding: 2em;
 }
 
-.option-list li {
-  display: flex;
-  margin: 1em;
-}
-
-.option-list li * {
-  margin-left: 0.5em;
+#render-options * {
   line-height: 1.5em;
 }
 
-.option-list li label {
+#render-options td {
+  padding: 0.2em 0.5em;
+}
+
+#render-options label {
+  display: block;
   padding: calc(0.1em);
-  height: calc(1.5em + 0.2em + 2px);
-  width: calc(10em + 0.2em + 2px);
+  min-height: calc(1.5em + 0.2em + 2px);
+  width: 100%;
   text-align: right;
 }
 
@@ -172,7 +169,7 @@ display: grid;
 }
 
 .reset-button:disabled {
-  color: #faa;
+  background-color: #f0f0f0;
   cursor: auto;
   opacity: 50%;
 }
@@ -194,5 +191,11 @@ display: grid;
   cursor: pointer;
   width: calc(5em + 0.2em + 2px);
   height: calc(1.5em + 0.2em + 2px);
-  align-self: flex-end;
-} */
+  display: block;
+}
+
+.input-description {
+  min-height: calc(1.5em + 0.2em + 2px);
+  display: block;
+
+}
