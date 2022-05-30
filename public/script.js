@@ -1,5 +1,6 @@
 const defaultValues = {
   "input-scale": 1,
+  "input-cut": false,
   "input-hatch": false,
   "input-hatch-density": 2,
 }
