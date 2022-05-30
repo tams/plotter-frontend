@@ -124,6 +124,10 @@ const renderSVG = () => {
 }
 
 const draw = (what) => {
+  if (!confirm("Are you sure you want to send commands to the plotter?")) {
+    return;
+  }
+
   var inputs = document.getElementsByTagName('input');
 
   for (var i=0; i<inputs.length; i++) {
