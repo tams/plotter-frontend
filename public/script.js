@@ -5,8 +5,33 @@ const defaultValues = {
   "input-hatch-density": 2,
 }
 
+let availableColors = []
+
 const updateInfo = (text) => {
   document.getElementById("info").innerHTML = text
+}
+
+const renderColorPicker = () => {
+  let table = document.querySelector("#settings tbody:nth-child(1)")
+  table.replaceChildren(table.querySelector(":scope tr:nth-child(1)"));
+  availableColors.forEach((color) => {
+    let id = `input-color-${color.hex.substring(1)}`
+    let tr = table.appendChild(document.querySelector("#dom-container>:nth-child(1) tr").cloneNode(true));
+    let input = tr.querySelector(":scope td:nth-child(2) input");
+    let square = tr.querySelector(":scope td:nth-child(2) label");
+    let code = tr.querySelector(":scope td:nth-child(4) span");
+    input.id = id;
+    input.name = color.hex;
+    square.htmlFor = id;
+    square.style = `background-color: ${color.hex};`
+    code.innerHTML = color.hex;
+  });
+}
+
+const setAllColors = (state) => {
+  document.querySelectorAll("#settings tbody:nth-child(1) input[type=checkbox]").forEach((input) => {
+    input.checked = state;
+  });
 }
 
 const uploadSVG = () => {
@@ -16,11 +41,12 @@ const uploadSVG = () => {
   fetch('/upload', {
     method: 'POST',
     body: fd
+
   }).then((res) => {
     if(res.status=="422"){
       updateInfo("the file extention is incorrect")
     } else if (res.status=="500"){
-      updateInfo("ouh shit you broke the server")
+      updateInfo("oh shit you broke the server")
     } else if (res.status=="200"){
       let elt = document.querySelector("#load-svg+.big-button-label p:nth-child(2)");
       elt.innerHTML = input.files[0].name
@@ -31,11 +57,38 @@ const uploadSVG = () => {
       document.getElementById("draw-box").disabled = true;
       document.getElementById("draw-dry-run").disabled = true;
       document.getElementById("draw-final").disabled = true;
+      return true;
     } else if (res.status=="400"){
       updateInfo("no file loaded")
     } else {
       updateInfo("unknown error code " + res.status)
     }
+
+  }).then((ok) => {
+    if (!ok) {
+      return;
+    }
+    let options = new FormData()
+    options.append("colors_only", true)
+    options.append("scale", 1)
+    fetch('/render_svg',{ method: 'POST', body: options })
+    .then((res) => {
+      if (res.status != 200) {
+        updateInfo("server error: " + res.status);
+        return;
+      }
+      return res.json()
+    }).then((out) => {
+      if (out === undefined) { return; }
+      if(!out.success){
+        updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error + ")")
+      } else {
+        let json = JSON.parse(out.stdout);
+        availableColors = json.colors;
+      }
+    }).then(() => {
+      renderColorPicker();
+    });
   });
 }
 
@@ -76,18 +129,18 @@ const resetField = (name) => {
 }
 
 const resetRenderOptions = () => {
-  for (let input in defaultValues) {
+  for (const [input, value] of Object.entries(defaultValues)) {
     let field = document.getElementById(input)
-    setInput(field, defaultValues[input]);
+    setInput(field, value);
   }
   changeRenderOptions();
 }
 
 const changeRenderOptions = () => {
-  for (let input in defaultValues) {
+  for (const [input, value] of Object.entries(defaultValues)) {
     let field = document.getElementById(input)
     let resetButton = field.parentElement.parentElement.querySelector(":scope td:nth-child(3) button");
-    resetButton.disabled = Boolean(getInput(field) == defaultValues[input]);
+    resetButton.disabled = Boolean(getInput(field) == value);
 
     if (input == "input-cut")
     {
@@ -103,6 +156,15 @@ const changeRenderOptions = () => {
 
 const renderSVG = () => {
   let options = new FormData(document.getElementById("render-options"))
+  let colors = Array.from(new FormData(document.getElementById("color-picker")).entries())
+    .map(([color, state]) => {
+      return state === "on" ? color : null;
+    })
+    .filter((val) => {
+      return val !== null;
+    })
+    .join(" ");
+  options.append("color_key", colors)
   fetch('/render_svg',{ method: 'POST', body: options })
   .then((res)=> {
     if (res.status != 200) {
@@ -115,8 +177,9 @@ const renderSVG = () => {
     if(!out.success){
       updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error + ")")
     } else {
-      let arr = out.stdout.split("\n")
-      updateInfo(arr[3]+"<br/>"+arr[4]) // positional selection of stdout lines :( TODO fix backend and provide better info
+      let json = JSON.parse(out.stdout);
+      let size = json.transformed_size;
+      updateInfo(`extents: (${size.begin.x}mm, ${size.begin.y}mm) to (${size.end.x}mm, ${size.end.y}mm)`);
       showPreview();
       document.getElementById("show-original").disabled = false;
       document.getElementById("show-preview").disabled = false;
@@ -124,7 +187,7 @@ const renderSVG = () => {
       document.getElementById("draw-dry-run").disabled = false;
       document.getElementById("draw-final").disabled = false;
     }
-  })
+  });
 }
 
 const draw = (what) => {
@@ -132,11 +195,11 @@ const draw = (what) => {
     return;
   }
 
-  var inputs = document.getElementsByTagName('input');
+  var inputs = Array.from(document.getElementsByTagName('input'));
 
-  for (var i=0; i<inputs.length; i++) {
-    inputs[i].disabled = true;
-  }
+  inputs.forEach((input) => {
+    input.disabled = true;
+  });
   updateInfo("printing in progress...");
 
   fetch('/run/' + what).then((res) => { return res.json() }).then((res) => {
@@ -145,10 +208,10 @@ const draw = (what) => {
     } else {
       updateInfo("printing failed!<br/>" + res.stdout + "<br/>" + res.stderr)
     }
-    for (var i=0; i<inputs.length; i++) {
-      inputs[i].disabled = false;
-    }
-  })
+    inputs.forEach((input) => {
+      input.disabled = false;
+    });
+  });
 }
 
 window.addEventListener('load', () => {
