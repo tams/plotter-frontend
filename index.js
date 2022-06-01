@@ -93,7 +93,7 @@ app.post("/render_svg", (req, res) => {
 
         console.log(json.color_key)
         if (json.color_key) {
-          cmd += ` --color_key ${json.color_key.replaceAll("#", "\\#")} `
+          cmd += ` --color_key ${json.color_key.replace(/#/g, "\\#")} `
         }
 
         cmd += " --scale " + parseFloat(json.scale)
