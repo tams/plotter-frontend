@@ -102,15 +102,11 @@ const showPreview = () => {
   document.getElementById("preview-img").src = "/preview/" + Math.floor(Math.random() * 1000).toString()
 }
 
-const enableWeb3 = () => {
-  document.getElementById("web-3").play();
-};
-
 const getInput = (field) => {
   if (field.type == "checkbox") {
     return Boolean(field.checked);
   } else {
-    return field.value;
+    return field.value;7da04541e46b6206924e3033fd9a0a8ec2499751
   }
 }
 
@@ -120,6 +116,76 @@ const setInput = (field, value) => {
   } else {
     field.value = value;
   }
+}
+
+const resetField = (name) => {
+  let field = document.getElementById(name)
+  setInput(field, defaultValues[name]);
+  changeRenderOptions();
+}
+
+const resetRenderOptions = () => {
+  for (const [input, value] of Object.entries(defaultValues)) {
+    let field = document.getElementById(input)
+    setInput(field, value);
+  }
+  changeRenderOptions();
+}
+
+const changeRenderOptions = () => {
+  for (const [input, value] of Object.entries(defaultValues)) {
+    let field = document.getElementById(input)
+    let resetButton = field.parentElement.parentElement.querySelector(":scope td:nth-child(3) button");
+    resetButton.disabled = Boolean(getInput(field) == value);
+
+    if (input == "input-cut")
+    {
+      let button = document.querySelector("#draw-final+label p");
+      if (getInput(field)) {
+        button.innerHTML = "Cut!";
+      } else {
+        button.innerHTML = "Draw!";
+      }
+    }
+  }
+}
+
+const renderSVG = () => {
+  let options = new FormData(document.getElementById("render-options"))
+  let colors = Array.from(new FormData(document.getElementById("color-picker")).entries())
+    .map(([color, state]) => {
+      return state === "on" ? color : null;
+    })
+    .filter((val) => {
+      return val !== null;
+    })
+    .join(" ");
+  options.append("color_key", colors)
+  fetch('/render_svg',{ method: 'POST', body: options })
+  .then((res)=> {
+    if (res.status != 200) {
+      updateInfo("server error: " + res.status);
+      return;
+    }
+    return res.json()
+  }).then((out) => {
+    if (out === undefined) { return; }
+    if(!out.success){
+      updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error + ")")
+    } else {
+      let json = JSON.parse(out.stdout);
+      let size = json.transformed_size;
+      updateInfo(`extents: (${size.begin.x}mm, ${size.begin.y}mm) to (${size.end.x}mm, ${size.end.y}mm)`);
+      showPreview();
+      document.getElementById("show-original").disabled = false;
+      document.getElementById("show-preview").disabled = false;
+      document.getElementById("draw-box").disabled = false;
+      document.getElementById("draw-dry-run").disabled = false;
+      document.getElementById("draw-final").disabled = false;
+    }
+  });
+}
+
 }
 
 const resetField = (name) => {
