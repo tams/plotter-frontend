@@ -4,7 +4,7 @@
   "description": "web interface to load images, configure and run a plotting machine",
   "main": "index.js",
   "scripts": {
-    "server": "nodemon -e css,js,html --watch public --watch index.js index.js",
+    "server": "nodemon -e css,js,html --watch public --watch html --watch index.js index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

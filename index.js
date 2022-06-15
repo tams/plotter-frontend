@@ -1,12 +1,13 @@
-const express = require('express')
-const bp = require('body-parser')
+const express = require("express")
+const bp = require("body-parser")
 const app = express()
 const { exec } = require("child_process");
 const fileUpload = require("express-fileupload");
+const fs = require("fs");
 const path = require("path");
 const morgan = require("morgan");
-const { Z_NO_COMPRESSION } = require('zlib');
-const Validator = require('validatorjs');
+const Validator = require("validatorjs");
+const { nextTick } = require("process");
 
 const validator = (body, rules, customMessages, callback) => {
   const validation = new Validator(body, rules, customMessages);
@@ -14,59 +15,67 @@ const validator = (body, rules, customMessages, callback) => {
   validation.fails(() => callback(validation.errors, false));
 };
 
-app.use(express.static('public'));
+app.use("/static", express.static(path.join(__dirname, "public")));
 app.use(bp.json())
 app.use(express.urlencoded({extended: true}));
 app.use(fileUpload({
     limits: {
-        fileSize: 4 *1024 * 1024 // 4 MB
+        fileSize: 4 * 1024 * 1024 // 4 MB
     },
     abortOnLimit: true,
     createParentPath: true
 }))
 app.use(morgan("dev"))
 
+// from https://github.com/expressjs/express/blob/2c47827053233e707536019a15499ccf5496dc9d/examples/route-map/index.js#L14
+app.map = function(a, route){
+  route = route || "";
+  for (var key in a) {
+    switch (typeof a[key]) {
+      // { "/path": { ... }}
+      case "object":
+        app.map(a[key], route + key);
+        break;
+      // get: function(){ ... }
+      case "function":
+        console.log("adding route %s %s", key, route);
+        app[key](route, a[key]);
+        break;
+    }
+  }
+};
 
-// cache bypass for updated preview/original
-app.get('/original/:code', (req, res) => {
-  res.redirect('/original');
+
+app.param("sid", (req, res, next, sid) => {
+  req.basePath = path.join(__dirname, "files", sid);
+  fs.mkdir(req.basePath, { recursive: true }, (err) => {
+    if (err) { return res.status(500).send("Internal server error"); }
+    else { return next(); }
+  });
 })
 
-app.get('/preview/:code', (req, res) => {
-  res.redirect('/preview');
-})
-
-app.get('/original', (req, res) => {
-  res.setHeader('Content-Type', 'image/svg+xml');
-  res.sendFile(__dirname + '/files/in/image.svg');
-})
-
-app.get('/preview', (req, res) => {
-  res.setHeader('Content-Type', 'image/svg+xml');
-  res.sendFile(__dirname + '/vis.svg');
-})
-
-app.post("/upload", (req, res) => {
+const upload = (req, res) => {
   if (!req.files) {
     return res.status(400).send("No files were uploaded.");
   }
   const filename = req.files.file.name;
-  const filepath = __dirname + "/files/in/image.svg";
+  const filepath = path.join(req.basePath, "image.svg");
   const extensionName = filename.substring(filename.length - 4); // fetch the file extension
-  const allowedExtension = ['.svg','.SVG'];
+  const allowedExtension = [".svg",".SVG"];
   if(!allowedExtension.includes(extensionName)){
     return res.status(422).send("Invalid Image");
   }
 
   req.files.file.mv(filepath, (err) => {
     if (err) {
-      return res.status(500).send(err);
+      return res.status(500).send("Internal server error");
+    } else {
+      return res.send({ status: "success" });
     }
-    return res.send({ status: "success", path: filepath });
   });
-});
+}
 
-app.post("/render_svg", (req, res) => {
+const renderSVG = (req, res) => {
   let json = req.body
   validator(
     json,
@@ -85,7 +94,8 @@ app.post("/render_svg", (req, res) => {
         res.status(412).send(err);
       } else {
         let cmd = "./wild_driver_bin";
-        cmd += " --json --input " + __dirname + "/files/in/image.svg"
+        cmd += " --json --input " + path.join(req.basePath, "image.svg");
+        cmd += " --vis " + path.join(req.basePath, "vis.svg");
 
         if (json.colors_only) {
           cmd += " --colors_only"
@@ -108,7 +118,7 @@ app.post("/render_svg", (req, res) => {
           cmd += " --hatch_density " + parseFloat(json.hatch_density)
         }
 
-        cmd += " --output " + __dirname + "/files/out/"
+        cmd += " --output " + req.basePath + "/"
 
         exec(cmd + "box.wild --box", (error, stdout, stderr) => {
           console.log("====== box ======\n")
@@ -138,17 +148,17 @@ app.post("/render_svg", (req, res) => {
       }
     }
   )
-})
+}
 
-app.get('/run/:target', (req, res) => {
-  let tgt = '';
-  if(req.params.target === 'box'){ tgt = 'box.wild' }
-  if(req.params.target === 'dry_run'){ tgt = 'dry_run.wild' }
-  if(req.params.target === 'draw'){ tgt = 'draw.wild' }
-  if(tgt === ''){ return res.status(404).send("Invalid endpoint") }
+const run = (req, res) => {
+  let tgt = "";
+  if(req.params.target === "box"){ tgt = "box.wild" }
+  if(req.params.target === "dry_run"){ tgt = "dry_run.wild" }
+  if(req.params.target === "draw"){ tgt = "draw.wild" }
+  if(tgt === ""){ return res.status(404).send("Invalid endpoint") }
 
   exec(
-    "stty -F /dev/ttyS0 9600 crtscts && cat ./files/out/" + tgt + " > /dev/ttyS0",
+    "stty -F /dev/ttyS0 9600 crtscts && cat " + path.join(req.basePath, tgt) + " > /dev/ttyS0",
     (error, stdout, stderr) => {
       console.log("====== send to plotter ======\n")
       console.log(error)
@@ -157,11 +167,46 @@ app.get('/run/:target', (req, res) => {
       return res.json({ "error": error ? true : false, "stdout": stdout, "stderr": stderr });
     }
   );
+}
+
+const randomID = () => {
+  var length = 12;
+  var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz'.split('');
+  var str = '';
+  for (var i = 0; i < length; i++) {
+    str += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return str;
+}
+
+app.map({
+  "/": { get: (req, res) => { res.redirect(`/app/${randomID()}`); } },
+  "/app/:sid([_a-zA-Z0-9]{1,32})": {
+    get: (req, res) => { res.sendFile(path.join(__dirname, "html/index.html")); },
+
+    "/original/:code?": { get: (req, res) => {
+      res.setHeader("Content-Type", "image/svg+xml");
+      res.sendFile(path.join(req.basePath, "image.svg"));
+    } },
+
+    "/preview/:code?": { get: (req, res) => {
+      res.setHeader("Content-Type", "image/svg+xml");
+      res.sendFile(path.join(req.basePath, "vis.svg"));
+    } },
+    "/upload": { post: upload },
+    "/render_svg": { post: renderSVG },
+    "/run/:target": { get: run }
+  },
+  // "/plotter": {
+  //   "/status": { get: plotterStatus }, // current session and filename
+  //   "/stop": { get: plotterStop }
+  // }
 })
+
 
 let port = process.env.PORT || 8080
 
-app.listen(port, (err) => {
+app.listen(port, "127.0.0.1", (err) => {
   if(err) throw err;
   console.log("listening on port " + port);
 })
