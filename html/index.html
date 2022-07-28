@@ -41,6 +41,7 @@
       <img id="preview-img" src="" alt="preview image" style="display: none;"/>
     </div>
     <div id="info"></div>
+    <div id="print-info"></div>
     <div id="settings">
       <form id="color-picker"></form>
       <form id="render-options"></form>
@@ -96,23 +97,27 @@
       </label>
     </div>
     <div id="draw-buttons" class="button-container">
-      <input type="button" disabled id="draw-box" class="hidden-input" onclick="draw('box')">
+      <input type="button" disabled id="draw-box" class="hidden-input draw-button" onclick="draw('box')">
       <label for="draw-box" class="big-button-label">
         <p>Box</p>
       </label>
 
-      <input type="button" disabled id="draw-dry-run" class="hidden-input" onclick="draw('dry_run')">
+      <input type="button" disabled id="draw-dry-run" class="hidden-input draw-button" onclick="draw('dry_run')">
       <label for="draw-dry-run" class="big-button-label">
         <p>Dry Run</p>
       </label>
 
-      <input type="button" disabled id="draw-final" class="hidden-input" onclick="draw('draw')">
+      <input type="button" disabled id="draw-final" class="hidden-input draw-button" onclick="draw('draw')">
       <label for="draw-final" class="big-button-label">
         <p>Draw!</p>
+      </label>
+
+      <input type="button" id="draw-stop" class="hidden-input" onclick="stop()">
+      <label for="draw-stop" class="big-button-label">
+        <p>Stop</p>
       </label>
     </div>
     <audio style="display: none" src="/static/fart.mp3" id="web-3"></audio>
     <script src="/static/script.js"></script>
   </body>
 </html>
-

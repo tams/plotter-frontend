@@ -48,6 +48,7 @@ app.map = function(a, route){
 
 app.param("sid", (req, res, next, sid) => {
   req.basePath = path.join(__dirname, "files", sid);
+  req.sid = sid;
   fs.mkdir(req.basePath, { recursive: true }, (err) => {
     if (err) { return res.status(500).send("Internal server error"); }
     else { return next(); }
@@ -150,24 +151,54 @@ const renderSVG = (req, res) => {
   )
 }
 
-const run = (req, res) => {
+
+// global state of the plotter (drawing)
+let plotterCmd = undefined
+let plotterLastOutput = {}
+let plotterAuthor = ""
+
+const plotterRun = (req, res) => {
+  if(plotterCmd !== undefined) { return res.status(409).send("Plotter busy"); }
+
   let tgt = "";
   if(req.params.target === "box"){ tgt = "box.wild" }
   if(req.params.target === "dry_run"){ tgt = "dry_run.wild" }
   if(req.params.target === "draw"){ tgt = "draw.wild" }
   if(tgt === ""){ return res.status(404).send("Invalid endpoint") }
 
-  exec(
-    "stty -F /dev/ttyS0 9600 crtscts && cat " + path.join(req.basePath, tgt) + " > /dev/ttyS0",
+  let wildfile = path.join(req.basePath, tgt);
+  let tempWildfile = path.join(__dirname, "files", "current_plot.wild");
+  plotterCmd = exec(
+    `cp ${wildfile} ${tempWildfile} && stty -F /dev/ttyS0 9600 crtscts && cat ${tempWildfile} > /dev/ttyS0`,
     (error, stdout, stderr) => {
       console.log("====== send to plotter ======\n")
       console.log(error)
       console.log(stdout)
       console.log(stderr)
-      return res.json({ "error": error ? true : false, "stdout": stdout, "stderr": stderr });
+      plotterCmd = undefined;
+      plotterLastOutput = { "error": error ? true : false, "stdout": stdout, "stderr": stderr };
     }
   );
+  plotterAuthor = req.sid;
+
+  return res.send({status: "success"});
 }
+
+const plotterStatus = (req, res) => {
+  return res.json({
+    "busy": plotterCmd !== undefined,
+    "last_output" : plotterLastOutput,
+    "author": plotterAuthor
+  });
+}
+
+const plotterStop = (req, res) => {
+  if (plotterCmd !== undefined) {
+    plotterCmd.kill("SIGTERM");
+  }
+  return res.send({ status: "success" });
+}
+
 
 const randomID = () => {
   var length = 12;
@@ -195,16 +226,16 @@ app.map({
     } },
     "/upload": { post: upload },
     "/render_svg": { post: renderSVG },
-    "/run/:target": { get: run }
+    "/run/:target": { get: plotterRun }
   },
-  // "/plotter": {
-  //   "/status": { get: plotterStatus }, // current session and filename
-  //   "/stop": { get: plotterStop }
-  // }
+  "/plotter": {
+    "/status": { get: plotterStatus }, // TODO: current session and filename
+    "/stop": { get: plotterStop }
+  }
 })
 
 
-let port = process.env.PORT || 8080
+const port = process.env.PORT || 8080
 
 app.listen(port, "127.0.0.1", (err) => {
   if(err) throw err;

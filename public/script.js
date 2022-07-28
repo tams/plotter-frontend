@@ -6,9 +6,15 @@ const defaultValues = {
 }
 
 let availableColors = []
+let drawButtonDisable = false
+let currentId = ""
 
 const updateInfo = (text) => {
   document.getElementById("info").innerHTML = text
+}
+
+const updatePrintInfo = (text) => {
+  document.getElementById("print-info").innerHTML = text
 }
 
 const renderColorPicker = () => {
@@ -38,7 +44,6 @@ const uploadSVG = () => {
   var input = document.getElementById("load-svg")
   const fd = new FormData()
   fd.append("file", input.files[0])
-  console.log(window.location)
   fetch(window.location.pathname + '/upload', {
     method: 'POST',
     body: fd
@@ -55,9 +60,7 @@ const uploadSVG = () => {
       document.getElementById("render").disabled = false;
       document.getElementById("show-original").disabled = true;
       document.getElementById("show-preview").disabled = true;
-      document.getElementById("draw-box").disabled = true;
-      document.getElementById("draw-dry-run").disabled = true;
-      document.getElementById("draw-final").disabled = true;
+      drawButtonDisable = true;
       return true;
     } else if (res.status=="400"){
       updateInfo("no file loaded")
@@ -163,8 +166,12 @@ const renderSVG = () => {
     .join(" ");
   options.append("color_key", colors)
   fetch(window.location.pathname + '/render_svg',{ method: 'POST', body: options })
-  .then((res)=> {
-    if (res.status != 200) {
+  .then((res) => {
+    if (res.status == 412) {
+      updateInfo("invalid render options!");
+      return;
+    }
+    else if (res.status != 200) {
       updateInfo("server error: " + res.status);
       return;
     }
@@ -180,9 +187,7 @@ const renderSVG = () => {
       showPreview();
       document.getElementById("show-original").disabled = false;
       document.getElementById("show-preview").disabled = false;
-      document.getElementById("draw-box").disabled = false;
-      document.getElementById("draw-dry-run").disabled = false;
-      document.getElementById("draw-final").disabled = false;
+      drawButtonDisable = false;
     }
   });
 }
@@ -191,27 +196,49 @@ const draw = (what) => {
   if (!confirm("Are you sure you want to send commands to the plotter?")) {
     return;
   }
+  fetch(window.location.pathname + '/run/' + what);
+}
 
-  var inputs = Array.from(document.getElementsByTagName('input'));
+const stop = () => {
+  if (!confirm("Are you sure you want to stop the plotter?")) {
+    return;
+  }
+  fetch("/plotter/stop");
+}
 
-  inputs.forEach((input) => {
-    input.disabled = true;
-  });
-  updateInfo("printing in progress...");
-
-  fetch(window.location.pathname + '/run/' + what).then((res) => { return res.json() }).then((res) => {
-    if (!res.error) {
-      updateInfo("printing successful");
-    } else {
-      updateInfo("printing failed!<br/>" + res.stdout + "<br/>" + res.stderr)
+const refreshStatus = () => {
+  fetch("/plotter/status").then((res) => {
+    if (res.status != 200) {
+      updateInfo("server error: " + res.status);
+      setTimeout(refreshStatus, 1000);
+      return;
     }
+    return res.json()
+  }).then((out) => {
+    var what = drawButtonDisable;
+    if (out.busy) {
+      what = true;
+      updatePrintInfo("printing in progress...");
+    }
+    else if (out.author == currentId) {
+      updatePrintInfo(out.last_output.stdout + " " + out.last_output.stderr);
+    }
+
+    var inputs = Array.from(document.querySelectorAll('#draw-buttons .draw-button'));
     inputs.forEach((input) => {
-      input.disabled = false;
+      input.disabled = what;
     });
-  });
+
+    setTimeout(refreshStatus, 1000);
+  }).catch((error) => {
+    console.error("fetch failed:", error)
+    setTimeout(refreshStatus, 1000);
+  })
 }
 
 window.addEventListener('load', () => {
+  // set current id
+  currentId = window.location.pathname.split("/")[2];
   // unload files
   document.getElementById("load-svg").value="";
   // reset form
@@ -220,7 +247,7 @@ window.addEventListener('load', () => {
   document.getElementById("render").disabled = true;
   document.getElementById("show-original").disabled = true;
   document.getElementById("show-preview").disabled = true;
-  document.getElementById("draw-box").disabled = true;
-  document.getElementById("draw-dry-run").disabled = true;
-  document.getElementById("draw-final").disabled = true;
+  drawButtonDisable = true;
+
+  refreshStatus();
 });
