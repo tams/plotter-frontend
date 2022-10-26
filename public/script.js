@@ -85,7 +85,7 @@ const uploadSVG = () => {
     }).then((out) => {
       if (out === undefined) { return; }
       if(!out.success){
-        updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error + ")")
+        updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error.stringify() + ")")
       } else {
         let json = JSON.parse(out.stdout);
         availableColors = json.colors;
@@ -179,7 +179,7 @@ const renderSVG = () => {
   }).then((out) => {
     if (out === undefined) { return; }
     if(!out.success){
-      updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error + ")")
+      updateInfo("errors occurred in remote command (step: " + out.step + ", error: " + out.error.stringify() + ")")
     } else {
       let json = JSON.parse(out.stdout);
       let size = json.transformed_size;
