@@ -11,14 +11,15 @@ html {
 
 body {
 display: grid;
-  grid-template-rows: 10% auto 10% 10% 5%;
+  grid-template-rows: 10% auto 10% 10% 10% 5%;
   grid-template-columns: 30% 30% auto;
 
   grid-template-areas:
     "preview-buttons preview-buttons settings"
     "preview preview settings"
     "preview preview settings-buttons"
-    "info print-info draw-buttons"
+    "preview preview draw-buttons"
+    "info print-info control-buttons"
     "progress-bar progress-bar progress-bar";
 
   width: 100%;
@@ -67,6 +68,11 @@ display: grid;
 
 #draw-buttons {
   grid-area: draw-buttons;
+  overflow: hidden;
+}
+
+#control-buttons {
+  grid-area: control-buttons;
   overflow: hidden;
 }
 

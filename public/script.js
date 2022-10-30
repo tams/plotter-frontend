@@ -205,10 +205,29 @@ const draw = (what) => {
 }
 
 const stop = () => {
-  if (!confirm("Are you sure you want to stop the plotter?")) {
+  if (!confirm("Are you sure you want to cancel the current drawing?")) {
     return;
   }
   fetch("/plotter/stop")
+  .then((res) => {
+      refreshStatus();
+  });
+}
+
+const pause = () => {
+  // No confirmation asked here,
+  // you can resume at no cost.
+  fetch("/plotter/pause")
+  .then((res) => {
+      refreshStatus();
+  });
+}
+
+const resume = () => {
+  if (!confirm("Are you sure you want to resume the current drawing?")) {
+    return;
+  }
+  fetch("/plotter/resume")
   .then((res) => {
       refreshStatus();
   });
@@ -230,12 +249,18 @@ const refreshStatus = () => {
         updatePrintInfo("");
     }
 
+    // Change draw buttons state
     var inputs = Array.from(document.querySelectorAll('#draw-buttons .draw-button'));
     inputs.forEach((input) => {
       input.disabled = drawButtonDisable || out.busy;
     });
-    document.querySelector('#draw-stop').disabled = !out.busy;
 
+    // Change control buttons state
+    document.querySelector('#control-stop').disabled = !out.busy;
+    document.querySelector('#control-pause').disabled = !out.busy || out.paused;
+    document.querySelector('#control-resume').disabled = !out.busy || !out.paused;
+
+    // Update progress bar
     var progress = document.querySelector('#progress-bar progress');
     progress.max = out.sizeTotal;
     progress.value = out.sizeCur;

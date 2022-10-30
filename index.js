@@ -154,10 +154,12 @@ const renderSVG = (req, res) => {
 
 // global state of the plotter (drawing)
 let plotterReader = undefined;
+let plotterWriter = undefined;
 let plotterLastOutput = ""
 let plotterAuthor = ""
 let plotterSizeCur = 0;
 let plotterSizeTotal = 1;
+let plotterPaused = false;
 
 const plotterPort = '/dev/ttyS0';
 
@@ -257,7 +259,35 @@ const plotterStatus = (req, res) => {
     "author": plotterAuthor,
     "sizeCur": plotterSizeCur,
     "sizeTotal": plotterSizeTotal,
+    "paused": plotterPaused,
   });
+}
+
+const plotterPause = (req, res) => {
+  if (plotterReader === undefined || plotterReader === true) {
+    return res.status(409).send("Not running");
+  }
+  if (plotterPaused) {
+    return res.status(409).send("Already paused");
+  }
+  plotterPaused = true;
+  plotterLastOutput = "paused";
+  plotterReader.unpipe();
+  plotterReader.pause();
+  return res.send({ status: "success" });
+}
+
+const plotterResume = (req, res) => {
+  if (plotterReader === undefined || plotterReader === true) {
+    return res.status(409).send("Not running");
+  }
+  if (!plotterPaused) {
+    return res.status(409).send("Not paused");
+  }
+  plotterPaused = false;
+  plotterLastOutput = "printing...";
+  plotterReader.pipe(plotterWriter);
+  return res.send({ status: "success" });
 }
 
 const plotterStop = (req, res) => {
@@ -300,7 +330,9 @@ app.map({
   },
   "/plotter": {
     "/status": { get: plotterStatus }, // TODO: current session and filename
-    "/stop": { get: plotterStop }
+    "/stop": { get: plotterStop },
+    "/pause": { get: plotterPause },
+    "/resume": { get: plotterResume },
   }
 })
 
