@@ -166,6 +166,7 @@ const plotterPort = '/dev/ttyS0';
 const plotterRun = (req, res) => {
   if(plotterReader !== undefined) { return res.status(409).send("Plotter busy"); }
   plotterReader = true;
+  plotterAuthor = req.sid;
   plotterLastOutput = "preparing...";
   plotterSizeCur = 0;
   plotterSizeTotal = 1;
@@ -182,9 +183,11 @@ const plotterRun = (req, res) => {
   // Make a copy of the wildfile so we're sure nobody replace the drawing midway
   fs.copyFile(wildfile, tempWildfile, (err) => {
       if (err) {
-          res.status(500).send("Could not create temporary file");
+          console.error("====== Error while copying ======");
+          console.error(err);
           plotterReader = undefined;
           plotterLastOutput = "copy failed";
+          res.status(500).send("Could not create temporary file");
           return;
       }
       // Read size of file
@@ -198,12 +201,12 @@ const plotterRun = (req, res) => {
       // Configure serial port
       exec(`stty -F ${plotterPort} 9600 crtscts`, (err, stdout, stderr) => {
           if (err) {
-              res.status(500).send("Could not setup serial port");
-              console.error(`====== Got code ${err} while running stty ======`);
+              console.error(`====== Got code ${err.code} while running stty ======`);
               console.error(stdout);
               console.error(stderr);
               plotterReader = undefined;
               plotterLastOutput = "setup failed";
+              res.status(500).send("Could not setup serial port");
               return;
           }
 
@@ -218,12 +221,16 @@ const plotterRun = (req, res) => {
           });
 
           // For when errors happen
-          plotterReader.on('error', () => {
+          plotterReader.on('error', (err) => {
+              console.error("====== Error while reading ======");
+              console.error(err);
               plotterLastOutput = "read failed";
               plotterReader.close();
           });
 
           plotterWriter.on('error', (err) => {
+              console.error("====== Error while writing ======");
+              console.error(err);
               plotterLastOutput = "write failed";
               plotterReader.close();
           });
