@@ -221,7 +221,7 @@ const refreshStatus = () => {
       updatePrintInfo("printing in progress...");
     }
     else if (out.author == currentId) {
-      updatePrintInfo(out.last_output.stdout + " " + out.last_output.stderr);
+      updatePrintInfo(out.last_output);
     }
 
     var inputs = Array.from(document.querySelectorAll('#draw-buttons .draw-button'));

@@ -153,12 +153,14 @@ const renderSVG = (req, res) => {
 
 
 // global state of the plotter (drawing)
-let plotterCmd = undefined
-let plotterLastOutput = {}
+let plotterReader = undefined;
+let plotterLastOutput = ""
 let plotterAuthor = ""
 
+const plotterPort = '/dev/ttyS0';
+
 const plotterRun = (req, res) => {
-  if(plotterCmd !== undefined) { return res.status(409).send("Plotter busy"); }
+  if(plotterReader !== undefined) { return res.status(409).send("Plotter busy"); }
 
   let tgt = "";
   if(req.params.target === "box"){ tgt = "box.wild" }
@@ -168,33 +170,74 @@ const plotterRun = (req, res) => {
 
   let wildfile = path.join(req.basePath, tgt);
   let tempWildfile = path.join(__dirname, "files", "current_plot.wild");
-  plotterCmd = exec(
-    `cp ${wildfile} ${tempWildfile} && stty -F /dev/ttyS0 9600 crtscts && cat ${tempWildfile} > /dev/ttyS0`,
-    (error, stdout, stderr) => {
-      console.log("====== send to plotter ======\n")
-      console.log(error)
-      console.log(stdout)
-      console.log(stderr)
-      plotterCmd = undefined;
-      plotterLastOutput = { "error": error ? true : false, "stdout": stdout, "stderr": stderr };
-    }
-  );
-  plotterAuthor = req.sid;
 
-  return res.send({status: "success"});
+  // Make a copy of the wildfile so we're sure nobody replace the drawing midway
+  fs.copyFile(wildfile, tempWildfile, (err) => {
+      if (err) {
+          res.status(500).send("Could not create temporary file");
+          return;
+      }
+      // Configure serial port
+      exec(`stty -F ${plotterPort} 9600 crtscts`, (err, stdout, stderr) => {
+          if (err) {
+              res.status(500).send("Could not setup serial port");
+              console.error(`====== Got code ${err} while running stty ======`);
+              console.error(stdout);
+              console.error(stderr);
+              return;
+          }
+          // Open the copy and the port to be read one byte at a time
+          // so it can be interrupted whenever
+          plotterReader = fs.createReadStream(tempWildfile, {highWaterMark: 1});
+          plotterWriter = fs.createWriteStream(plotterPort, {highWaterMark: 1});
+
+          // For when errors happen
+          plotterReader.on('error', () => {
+              plotterLastOutput = "read failed";
+              plotterWriter.close();
+          });
+
+          plotterWriter.on('error', (err) => {
+              plotterLastOutput = "write failed";
+              plotterWriter.close();
+          });
+
+          // For when the file is reached
+          plotterReader.on('end', () => {
+              plotterLastOutput = "success";
+              plotterWriter.close();
+          });
+
+          // For when we stop writing
+          // (either because of error, end reached, or stopped)
+          plotterReader.on('close', () => {
+              plotterReader = undefined;
+              plotterWriter.close();
+          });
+
+          // Copy everything in the file to the plotter
+          plotterReader.pipe(plotterWriter);
+
+          // At this point the process should be started,
+          // so we answer the HTTP call
+          plotterAuthor = req.sid;
+          res.send({status: "success"});
+      });
+  });
 }
 
 const plotterStatus = (req, res) => {
   return res.json({
-    "busy": plotterCmd !== undefined,
+    "busy": plotterReader !== undefined,
     "last_output" : plotterLastOutput,
     "author": plotterAuthor
   });
 }
 
 const plotterStop = (req, res) => {
-  if (plotterCmd !== undefined) {
-    plotterCmd.kill("SIGTERM");
+  if (plotterReader !== undefined) {
+    plotterLastOutput = "stopped";
+    plotterReader.close();
   }
   return res.send({ status: "success" });
 }
