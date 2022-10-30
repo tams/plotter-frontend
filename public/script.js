@@ -236,6 +236,11 @@ const refreshStatus = () => {
     });
     document.querySelector('#draw-stop').disabled = !out.busy;
 
+    var progress = document.querySelector('#progress-bar progress');
+    progress.max = out.sizeTotal;
+    progress.value = out.sizeCur;
+
+
   }).catch((error) => {
     console.error("fetch failed:", error)
   })

@@ -156,6 +156,8 @@ const renderSVG = (req, res) => {
 let plotterReader = undefined;
 let plotterLastOutput = ""
 let plotterAuthor = ""
+let plotterSizeCur = 0;
+let plotterSizeTotal = 1;
 
 const plotterPort = '/dev/ttyS0';
 
@@ -163,6 +165,8 @@ const plotterRun = (req, res) => {
   if(plotterReader !== undefined) { return res.status(409).send("Plotter busy"); }
   plotterReader = true;
   plotterLastOutput = "preparing...";
+  plotterSizeCur = 0;
+  plotterSizeTotal = 1;
 
   let tgt = "";
   if(req.params.target === "box"){ tgt = "box.wild" }
@@ -181,6 +185,14 @@ const plotterRun = (req, res) => {
           plotterLastOutput = "copy failed";
           return;
       }
+      // Read size of file
+      try {
+        plotterSizeTotal = fs.statSync(tempWildfile).size;
+      } catch(err) {
+        // If we don't get it we don't really care.
+        console.warn(err);
+      }
+
       // Configure serial port
       exec(`stty -F ${plotterPort} 9600 crtscts`, (err, stdout, stderr) => {
           if (err) {
@@ -192,10 +204,16 @@ const plotterRun = (req, res) => {
               plotterLastOutput = "setup failed";
               return;
           }
+
           // Open the copy and the port to be read one byte at a time
           // so it can be interrupted whenever
           plotterReader = fs.createReadStream(tempWildfile, {highWaterMark: 1});
           plotterWriter = fs.createWriteStream(plotterPort, {highWaterMark: 1});
+
+          // When we read something
+          plotterReader.on('data', (chunk) => {
+              plotterSizeCur += chunk.length;
+          });
 
           // For when errors happen
           plotterReader.on('error', () => {
@@ -236,7 +254,9 @@ const plotterStatus = (req, res) => {
   return res.json({
     "busy": plotterReader !== undefined && plotterReader !== true,
     "last_output" : plotterLastOutput,
-    "author": plotterAuthor
+    "author": plotterAuthor,
+    "sizeCur": plotterSizeCur,
+    "sizeTotal": plotterSizeTotal,
   });
 }
 
