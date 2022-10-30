@@ -61,6 +61,7 @@ const uploadSVG = () => {
       document.getElementById("show-original").disabled = true;
       document.getElementById("show-preview").disabled = true;
       drawButtonDisable = true;
+      setTimeout(refreshStatus, 0);
       return true;
     } else if (res.status=="400"){
       updateInfo("no file loaded")
@@ -188,6 +189,7 @@ const renderSVG = () => {
       document.getElementById("show-original").disabled = false;
       document.getElementById("show-preview").disabled = false;
       drawButtonDisable = false;
+      setTimeout(refreshStatus, 0);
     }
   });
 }
@@ -196,43 +198,46 @@ const draw = (what) => {
   if (!confirm("Are you sure you want to send commands to the plotter?")) {
     return;
   }
-  fetch(window.location.pathname + '/run/' + what);
+  fetch(window.location.pathname + '/run/' + what)
+  .then((res) => {
+      refreshStatus();
+  });
 }
 
 const stop = () => {
   if (!confirm("Are you sure you want to stop the plotter?")) {
     return;
   }
-  fetch("/plotter/stop");
+  fetch("/plotter/stop")
+  .then((res) => {
+      refreshStatus();
+  });
 }
 
 const refreshStatus = () => {
   fetch("/plotter/status").then((res) => {
     if (res.status != 200) {
       updateInfo("server error: " + res.status);
-      setTimeout(refreshStatus, 1000);
       return;
     }
     return res.json()
   }).then((out) => {
-    var what = drawButtonDisable;
-    if (out.busy) {
-      what = true;
-      updatePrintInfo("printing in progress...");
-    }
-    else if (out.author == currentId) {
-      updatePrintInfo(out.last_output);
+    if (out.author == currentId) {
+        updatePrintInfo(out.last_output);
+    } else if (out.busy) {
+        updatePrintInfo("busy...");
+    } else {
+        updatePrintInfo("");
     }
 
     var inputs = Array.from(document.querySelectorAll('#draw-buttons .draw-button'));
     inputs.forEach((input) => {
-      input.disabled = what;
+      input.disabled = drawButtonDisable || out.busy;
     });
+    document.querySelector('#draw-stop').disabled = !out.busy;
 
-    setTimeout(refreshStatus, 1000);
   }).catch((error) => {
     console.error("fetch failed:", error)
-    setTimeout(refreshStatus, 1000);
   })
 }
 
@@ -249,5 +254,6 @@ window.addEventListener('load', () => {
   document.getElementById("show-preview").disabled = true;
   drawButtonDisable = true;
 
+  setInterval(refreshStatus, 1000);
   refreshStatus();
 });

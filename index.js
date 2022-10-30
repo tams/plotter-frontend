@@ -161,6 +161,8 @@ const plotterPort = '/dev/ttyS0';
 
 const plotterRun = (req, res) => {
   if(plotterReader !== undefined) { return res.status(409).send("Plotter busy"); }
+  plotterReader = true;
+  plotterLastOutput = "preparing...";
 
   let tgt = "";
   if(req.params.target === "box"){ tgt = "box.wild" }
@@ -175,6 +177,8 @@ const plotterRun = (req, res) => {
   fs.copyFile(wildfile, tempWildfile, (err) => {
       if (err) {
           res.status(500).send("Could not create temporary file");
+          plotterReader = undefined;
+          plotterLastOutput = "copy failed";
           return;
       }
       // Configure serial port
@@ -184,6 +188,8 @@ const plotterRun = (req, res) => {
               console.error(`====== Got code ${err} while running stty ======`);
               console.error(stdout);
               console.error(stderr);
+              plotterReader = undefined;
+              plotterLastOutput = "setup failed";
               return;
           }
           // Open the copy and the port to be read one byte at a time
@@ -194,18 +200,17 @@ const plotterRun = (req, res) => {
           // For when errors happen
           plotterReader.on('error', () => {
               plotterLastOutput = "read failed";
-              plotterWriter.close();
+              plotterReader.close();
           });
 
           plotterWriter.on('error', (err) => {
               plotterLastOutput = "write failed";
-              plotterWriter.close();
+              plotterReader.close();
           });
 
           // For when the file is reached
           plotterReader.on('end', () => {
               plotterLastOutput = "success";
-              plotterWriter.close();
           });
 
           // For when we stop writing
@@ -217,6 +222,7 @@ const plotterRun = (req, res) => {
 
           // Copy everything in the file to the plotter
           plotterReader.pipe(plotterWriter);
+          plotterLastOutput = "printing...";
 
           // At this point the process should be started,
           // so we answer the HTTP call
@@ -228,17 +234,18 @@ const plotterRun = (req, res) => {
 
 const plotterStatus = (req, res) => {
   return res.json({
-    "busy": plotterReader !== undefined,
+    "busy": plotterReader !== undefined && plotterReader !== true,
     "last_output" : plotterLastOutput,
     "author": plotterAuthor
   });
 }
 
 const plotterStop = (req, res) => {
-  if (plotterReader !== undefined) {
-    plotterLastOutput = "stopped";
-    plotterReader.close();
+  if (plotterReader === undefined || plotterReader === true) {
+    return res.status(409).send("Not running");
   }
+  plotterLastOutput = "stopped";
+  plotterReader.close();
   return res.send({ status: "success" });
 }
 
