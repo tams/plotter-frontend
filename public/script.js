@@ -61,6 +61,7 @@ const uploadSVG = () => {
       document.getElementById("show-original").disabled = true;
       document.getElementById("show-preview").disabled = true;
       drawButtonDisable = true;
+      setTimeout(refreshStatus, 0);
       return true;
     } else if (res.status=="400"){
       updateInfo("no file loaded")
@@ -188,6 +189,7 @@ const renderSVG = () => {
       document.getElementById("show-original").disabled = false;
       document.getElementById("show-preview").disabled = false;
       drawButtonDisable = false;
+      setTimeout(refreshStatus, 0);
     }
   });
 }
@@ -196,43 +198,76 @@ const draw = (what) => {
   if (!confirm("Are you sure you want to send commands to the plotter?")) {
     return;
   }
-  fetch(window.location.pathname + '/run/' + what);
+  fetch(window.location.pathname + '/run/' + what)
+  .then((res) => {
+      refreshStatus();
+  });
 }
 
 const stop = () => {
-  if (!confirm("Are you sure you want to stop the plotter?")) {
+  if (!confirm("Are you sure you want to cancel the current drawing?")) {
     return;
   }
-  fetch("/plotter/stop");
+  fetch("/plotter/stop")
+  .then((res) => {
+      refreshStatus();
+  });
+}
+
+const pause = () => {
+  // No confirmation asked here,
+  // you can resume at no cost.
+  fetch("/plotter/pause")
+  .then((res) => {
+      refreshStatus();
+  });
+}
+
+const resume = () => {
+  if (!confirm("Are you sure you want to resume the current drawing?")) {
+    return;
+  }
+  fetch("/plotter/resume")
+  .then((res) => {
+      refreshStatus();
+  });
 }
 
 const refreshStatus = () => {
   fetch("/plotter/status").then((res) => {
     if (res.status != 200) {
       updateInfo("server error: " + res.status);
-      setTimeout(refreshStatus, 1000);
       return;
     }
     return res.json()
   }).then((out) => {
-    var what = drawButtonDisable;
-    if (out.busy) {
-      what = true;
-      updatePrintInfo("printing in progress...");
-    }
-    else if (out.author == currentId) {
-      updatePrintInfo(out.last_output);
+    if (out.author == currentId) {
+        updatePrintInfo(out.last_output);
+    } else if (out.busy) {
+        updatePrintInfo("busy...");
+    } else {
+        updatePrintInfo("");
     }
 
+    // Change draw buttons state
     var inputs = Array.from(document.querySelectorAll('#draw-buttons .draw-button'));
     inputs.forEach((input) => {
-      input.disabled = what;
+      input.disabled = drawButtonDisable || out.busy;
     });
 
-    setTimeout(refreshStatus, 1000);
+    // Change control buttons state
+    document.querySelector('#control-stop').disabled = !out.busy;
+    document.querySelector('#control-pause').disabled = !out.busy || out.paused;
+    document.querySelector('#control-resume').disabled = !out.busy || !out.paused;
+
+    // Update progress bar
+    var progress = document.querySelector('#progress-bar progress');
+    progress.max = out.sizeTotal;
+    progress.value = out.sizeCur;
+
+
   }).catch((error) => {
     console.error("fetch failed:", error)
-    setTimeout(refreshStatus, 1000);
   })
 }
 
@@ -249,5 +284,6 @@ window.addEventListener('load', () => {
   document.getElementById("show-preview").disabled = true;
   drawButtonDisable = true;
 
+  setInterval(refreshStatus, 1000);
   refreshStatus();
 });

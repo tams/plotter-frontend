@@ -154,13 +154,22 @@ const renderSVG = (req, res) => {
 
 // global state of the plotter (drawing)
 let plotterReader = undefined;
+let plotterWriter = undefined;
 let plotterLastOutput = ""
 let plotterAuthor = ""
+let plotterSizeCur = 0;
+let plotterSizeTotal = 1;
+let plotterPaused = false;
 
 const plotterPort = '/dev/ttyS0';
 
 const plotterRun = (req, res) => {
   if(plotterReader !== undefined) { return res.status(409).send("Plotter busy"); }
+  plotterReader = true;
+  plotterAuthor = req.sid;
+  plotterLastOutput = "preparing...";
+  plotterSizeCur = 0;
+  plotterSizeTotal = 1;
 
   let tgt = "";
   if(req.params.target === "box"){ tgt = "box.wild" }
@@ -174,32 +183,56 @@ const plotterRun = (req, res) => {
   // Make a copy of the wildfile so we're sure nobody replace the drawing midway
   fs.copyFile(wildfile, tempWildfile, (err) => {
       if (err) {
+          console.error("====== Error while copying ======");
+          console.error(err);
+          plotterReader = undefined;
+          plotterLastOutput = "copy failed";
           res.status(500).send("Could not create temporary file");
           return;
       }
+      // Read size of file
+      try {
+        plotterSizeTotal = fs.statSync(tempWildfile).size;
+      } catch(err) {
+        // If we don't get it we don't really care.
+        console.warn(err);
+      }
+
       // Configure serial port
       exec(`stty -F ${plotterPort} 9600 crtscts`, (err, stdout, stderr) => {
           if (err) {
-              res.status(500).send("Could not setup serial port");
-              console.error(`====== Got code ${err} while running stty ======`);
+              console.error(`====== Got code ${err.code} while running stty ======`);
               console.error(stdout);
               console.error(stderr);
+              plotterReader = undefined;
+              plotterLastOutput = "setup failed";
+              res.status(500).send("Could not setup serial port");
               return;
           }
+
           // Open the copy and the port to be read one byte at a time
           // so it can be interrupted whenever
           plotterReader = fs.createReadStream(tempWildfile, {highWaterMark: 1});
           plotterWriter = fs.createWriteStream(plotterPort, {highWaterMark: 1});
 
+          // When we read something
+          plotterReader.on('data', (chunk) => {
+              plotterSizeCur += chunk.length;
+          });
+
           // For when errors happen
-          plotterReader.on('error', () => {
+          plotterReader.on('error', (err) => {
+              console.error("====== Error while reading ======");
+              console.error(err);
               plotterLastOutput = "read failed";
-              plotterWriter.close();
+              plotterReader.close();
           });
 
           plotterWriter.on('error', (err) => {
+              console.error("====== Error while writing ======");
+              console.error(err);
               plotterLastOutput = "write failed";
-              plotterWriter.close();
+              plotterReader.close();
           });
 
           // For when the file is reached
@@ -217,6 +250,7 @@ const plotterRun = (req, res) => {
 
           // Copy everything in the file to the plotter
           plotterReader.pipe(plotterWriter);
+          plotterLastOutput = "printing...";
 
           // At this point the process should be started,
           // so we answer the HTTP call
@@ -228,17 +262,48 @@ const plotterRun = (req, res) => {
 
 const plotterStatus = (req, res) => {
   return res.json({
-    "busy": plotterReader !== undefined,
+    "busy": plotterReader !== undefined && plotterReader !== true,
     "last_output" : plotterLastOutput,
-    "author": plotterAuthor
+    "author": plotterAuthor,
+    "sizeCur": plotterSizeCur,
+    "sizeTotal": plotterSizeTotal,
+    "paused": plotterPaused,
   });
 }
 
-const plotterStop = (req, res) => {
-  if (plotterReader !== undefined) {
-    plotterLastOutput = "stopped";
-    plotterReader.close();
+const plotterPause = (req, res) => {
+  if (plotterReader === undefined || plotterReader === true) {
+    return res.status(409).send("Not running");
   }
+  if (plotterPaused) {
+    return res.status(409).send("Already paused");
+  }
+  plotterPaused = true;
+  plotterLastOutput = "paused";
+  plotterReader.unpipe();
+  plotterReader.pause();
+  return res.send({ status: "success" });
+}
+
+const plotterResume = (req, res) => {
+  if (plotterReader === undefined || plotterReader === true) {
+    return res.status(409).send("Not running");
+  }
+  if (!plotterPaused) {
+    return res.status(409).send("Not paused");
+  }
+  plotterPaused = false;
+  plotterLastOutput = "printing...";
+  plotterReader.pipe(plotterWriter);
+  return res.send({ status: "success" });
+}
+
+const plotterStop = (req, res) => {
+  if (plotterReader === undefined || plotterReader === true) {
+    return res.status(409).send("Not running");
+  }
+  plotterLastOutput = "stopped";
+  plotterReader.close();
   return res.send({ status: "success" });
 }
 
@@ -273,7 +338,9 @@ app.map({
   },
   "/plotter": {
     "/status": { get: plotterStatus }, // TODO: current session and filename
-    "/stop": { get: plotterStop }
+    "/stop": { get: plotterStop },
+    "/pause": { get: plotterPause },
+    "/resume": { get: plotterResume },
   }
 })
 

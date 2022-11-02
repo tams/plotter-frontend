@@ -111,11 +111,25 @@
       <label for="draw-final" class="big-button-label">
         <p>Draw!</p>
       </label>
+    </div>
+    <div id="control-buttons" class="button-container">
+      <input type="button" disabled id="control-pause" class="hidden-input" onclick="pause()">
+      <label for="control-pause" class="big-button-label">
+        <p>Pause</p>
+      </label>
 
-      <input type="button" id="draw-stop" class="hidden-input" onclick="stop()">
-      <label for="draw-stop" class="big-button-label">
+      <input type="button" disabled id="control-resume" class="hidden-input" onclick="resume()">
+      <label for="control-resume" class="big-button-label">
+        <p>Resume</p>
+      </label>
+
+      <input type="button" disabled id="control-stop" class="hidden-input" onclick="stop()">
+      <label for="control-stop" class="big-button-label">
         <p>Stop</p>
       </label>
+    </div>
+    <div id="progress-bar">
+      <progress value="0" max="1"></progress>
     </div>
     <audio style="display: none" src="/static/fart.mp3" id="web-3"></audio>
     <script src="/static/script.js"></script>
