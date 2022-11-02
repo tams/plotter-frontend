@@ -238,6 +238,7 @@ const plotterRun = (req, res) => {
           // For when the file is reached
           plotterReader.on('end', () => {
               plotterLastOutput = "success";
+              plotterWriter.close();
           });
 
           // For when we stop writing
