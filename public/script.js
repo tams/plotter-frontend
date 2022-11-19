@@ -284,6 +284,54 @@ window.addEventListener('load', () => {
   document.getElementById("show-preview").disabled = true;
   drawButtonDisable = true;
 
+  // TODO remove test image
+  const testSrc = "/static/techinc_flyer.svg";
+  const previewContainer = document.getElementById("preview");
+  const previewImg = document.getElementById("preview-img");
+  const upImg = previewImg.getElementById("uploaded-img");
+  const border = previewImg.getElementById("border");
+
+  const resize = () => {
+      const contStyle = getComputedStyle(previewContainer, null);
+      const containerW = previewContainer.getBoundingClientRect().width 
+        - parseInt(contStyle.getPropertyValue("padding-left"))
+        - parseInt(contStyle.getPropertyValue("padding-right"));
+      const containerH = previewContainer.getBoundingClientRect().height
+        - parseInt(contStyle.getPropertyValue("padding-top"))
+        - parseInt(contStyle.getPropertyValue("padding-bottom"));
+      const containerA = containerW / containerH;
+
+      const loadedSvg = upImg.children[0]
+      const loadedSvgW = loadedSvg.getAttribute("width");
+      const loadedSvgH = loadedSvg.getAttribute("height");
+      const loadedSvgA = loadedSvgW / loadedSvgH;
+
+      let scale = 1;
+      if (loadedSvgA >= containerA) {
+        scale = containerW / loadedSvgW;
+      }
+      else {
+        scale = containerH / loadedSvgH;
+      }
+      upImg.setAttribute("width", loadedSvgW);
+      upImg.setAttribute("height", loadedSvgH);
+      border.setAttribute("width", loadedSvgW);
+      border.setAttribute("height", loadedSvgH);
+      previewImg.setAttribute("width", containerW);
+      previewImg.setAttribute("height", containerH);
+      upImg.setAttribute("transform", `scale(${scale})`)
+      border.setAttribute("transform", `scale(${scale})`)
+  }
+
+  fetch(testSrc)
+    .then(resp => resp.text())
+    .then(svgData => upImg.innerHTML = svgData)
+    .then(() => {
+      resize();
+    })
+  
+  window.addEventListener("resize", resize);
+
   setInterval(refreshStatus, 1000);
   refreshStatus();
 });

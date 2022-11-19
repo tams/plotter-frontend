@@ -38,7 +38,12 @@
       </label>
     </div>
     <div id="preview">
-      <img id="preview-img" src="" alt="preview image" style="display: none;"/>
+      <svg id="preview-img">
+        <g id="shim">
+          <rect id="border" stroke="gray" stroke-width="3" stroke-dasharray="4" fill="white" width="20" height="20"></rect>
+          <g id="uploaded-img"></g>
+        </g>
+      </svg>
     </div>
     <div id="info"></div>
     <div id="print-info"></div>
